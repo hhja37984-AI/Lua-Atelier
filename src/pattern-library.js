@@ -76,23 +76,42 @@ function pBlockEditor(block){
  host.append(library,source,pPartsEditor(block.parts,refresh),assignments,hint);refresh();return host;
 }
 let activePattern=null;
+const PATTERN_STORAGE_KEY='risu-lua-atelier-pattern-templates-v1';
+function persistPatterns(){try{localStorage.setItem(PATTERN_STORAGE_KEY,JSON.stringify(project.patterns||[]))}catch(e){console.warn('패턴 저장 실패:',e)}}
+function loadPatternLibrary(){try{const saved=JSON.parse(localStorage.getItem(PATTERN_STORAGE_KEY)||'[]');if(Array.isArray(saved))project.patterns=saved}catch(e){console.warn('패턴 불러오기 실패:',e)}}
+function exportPatternLibrary(){const blob=new Blob([JSON.stringify(project.patterns||[],null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='lua_atelier_patterns.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+function importPatternLibrary(text){
+ const imported=JSON.parse(text);
+ if(!Array.isArray(imported)||imported.some(t=>!t||typeof t.title!=='string'||!Array.isArray(t.parts)||t.parts.some(p=>!PTYPES[p.kind]||typeof p.text!=='string')))throw Error('패턴 파일 형식이 올바르지 않습니다.');
+ const ids=new Set((project.patterns||[]).map(t=>t.id));project.patterns=project.patterns||[];
+ for(const t of imported){const item=copy(t);if(!item.id||ids.has(item.id))item.id=uid();ids.add(item.id);project.patterns.push(item)}
+ persistPatterns();renderPatternLibrary();
+}
+function pExample(type){
+ const sample={
+  date:{title:'날짜 · 5 May 2005',sample:'5 May 2005',parts:[pToken('digits'),pToken('space'),pToken('letters'),pToken('space'),pToken('digits')]},
+  location:{title:'장소 · Location: Alexandria',sample:'Location: Alexandria',parts:[{kind:'literal',text:'Location: '},pToken('until')]},
+  command:{title:'명령어 인자 · 세미콜론',sample:'now;Arisu;14',parts:[pToken('until'),{kind:'literal',text:';'},pToken('until'),{kind:'literal',text:';'},pToken('digits')]}
+ }[type];
+ if(!sample)return;const t={id:uid(),...sample};project.patterns=project.patterns||[];project.patterns.push(t);activePattern=t.id;persistPatterns();renderPatternLibrary();
+}
 function renderPatternLibrary(){
  if(!Array.isArray(project.patterns))project.patterns=[];
  const list=$('#patternLibraryList');list.replaceChildren();
  project.patterns.forEach(t=>{
   const row=document.createElement('div');row.className='pattern-template';
   const title=document.createElement('strong');title.textContent=t.title;
-  const edit=document.createElement('button');edit.textContent='편집';edit.onclick=()=>{activePattern=t.id;renderPatternLibrary()};
-  const clone=document.createElement('button');clone.textContent='복제';clone.onclick=()=>{const c=copy(t);c.id=uid();c.title+=' 복사본';project.patterns.push(c);activePattern=c.id;renderPatternLibrary()};
-  const del=document.createElement('button');del.textContent='삭제';del.onclick=()=>{if(!confirm('패턴을 삭제할까요? 이미 복사한 블록은 유지됩니다.'))return;project.patterns=project.patterns.filter(x=>x.id!==t.id);if(activePattern===t.id)activePattern=null;renderPatternLibrary()};
+  const edit=document.createElement('button');edit.textContent='편집';edit.onclick=()=>{activePattern=t.id;persistPatterns();renderPatternLibrary()};
+  const clone=document.createElement('button');clone.textContent='복제';clone.onclick=()=>{const c=copy(t);c.id=uid();c.title+=' 복사본';project.patterns.push(c);activePattern=c.id;persistPatterns();renderPatternLibrary()};
+  const del=document.createElement('button');del.textContent='삭제';del.onclick=()=>{if(!confirm('패턴을 삭제할까요? 이미 복사한 블록은 유지됩니다.'))return;project.patterns=project.patterns.filter(x=>x.id!==t.id);if(activePattern===t.id)activePattern=null;persistPatterns();renderPatternLibrary()};
   row.append(title,edit,clone,del);list.append(row);
  });
  const t=project.patterns.find(x=>x.id===activePattern),host=$('#patternLibraryEditor');host.replaceChildren();
  if(!t){host.textContent='패턴을 선택하세요.';return}
  const name=document.createElement('div');name.className='field';name.innerHTML='<label>패턴 이름</label><input>';
- name.querySelector('input').value=t.title;name.querySelector('input').oninput=e=>{t.title=e.target.value;list.querySelectorAll('strong')[project.patterns.indexOf(t)].textContent=t.title};
+ name.querySelector('input').value=t.title;name.querySelector('input').oninput=e=>{t.title=e.target.value;list.querySelectorAll('strong')[project.patterns.indexOf(t)].textContent=t.title;persistPatterns()};
  const sample=document.createElement('div');sample.className='field';sample.innerHTML='<label>샘플 입력</label><textarea></textarea>';
- sample.querySelector('textarea').value=t.sample||'';sample.querySelector('textarea').oninput=e=>{t.sample=e.target.value;preview()};
+ sample.querySelector('textarea').value=t.sample||'';sample.querySelector('textarea').oninput=e=>{t.sample=e.target.value;persistPatterns();preview()};
  const previewBox=document.createElement('div');previewBox.className='pattern-preview';
  previewBox.innerHTML='<b>추출 미리보기</b><pre id="patternPreview"></pre><details><summary>생성 Lua pattern</summary><code id="patternLua"></code></details>';
  function preview(){
@@ -107,6 +126,11 @@ function renderPatternLibrary(){
  project.functions.forEach(f=>{const o=document.createElement('option');o.value=f.id;o.textContent=f.name;select.append(o)});
  const addFn=document.createElement('button');addFn.textContent='내 함수에 복사';addFn.onclick=()=>{const f=project.functions.find(f=>f.id===select.value);if(!f){alert('함수를 선택하세요.');return}f.flow.push(pBlock(t));activeFn=f.id;redraw();toPage('functions')};
  actions.append(main,select,addFn);
- host.append(name,sample,pPartsEditor(t.parts,preview),previewBox,actions);preview();
+ host.append(name,sample,pPartsEditor(t.parts,()=>{persistPatterns();preview()}),previewBox,actions);preview();
 }
 $('#newPattern').onclick=()=>{if(!Array.isArray(project.patterns))project.patterns=[];const t=pTemplate();project.patterns.push(t);activePattern=t.id;renderPatternLibrary()};
+
+$('#exportPatterns').onclick=exportPatternLibrary;
+$('#importPatterns').onclick=()=>$('#patternLibraryFile').click();
+$('#patternLibraryFile').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{importPatternLibrary(await file.text())}catch(err){alert('패턴 불러오기 오류: '+err.message)}e.target.value=''};
+document.querySelectorAll('[data-pattern-example]').forEach(b=>b.onclick=()=>pExample(b.dataset.patternExample));
