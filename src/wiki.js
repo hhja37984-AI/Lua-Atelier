@@ -34,7 +34,7 @@ function renderWiki(){
   });
   if(!found)articles.append(wikiEl('div','wiki-noresults','검색 결과 없음'));
 }
-document.getElementById('wikiBtn').onclick=()=>{switchPage('wiki');renderWiki();window.scrollTo({top:0,behavior:'instant'})};
+document.getElementById('wikiBtn').onclick=()=>{toPage('wiki');renderWiki();window.scrollTo({top:0,behavior:'instant'})};
 document.getElementById('wikiSearch').oninput=renderWiki;
 document.getElementById('wikiExpand').onclick=()=>{
   const items=[...document.querySelectorAll('#wikiArticles details')];
