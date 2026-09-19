@@ -88,10 +88,11 @@ function widgetLuaCode(w){
 }
 function workflowLuaCode(w){
  if(!w.enabled)return [];
+ if(w.dateFormat==='custom'&&(!w.datePattern||!Array.isArray(w.datePattern.parts)))return ['    -- 사용자 정의 날짜 패턴을 먼저 선택하세요.'];
  const pattern=w.dateFormat==='custom'&&w.datePattern?pCompile(w.datePattern.parts).lua.replace(/^\^/,'').replace(/\$$/,''):w.dateFormat==='english'?'(%d%d?)%s+(%a+),?%s*(%d+)':w.dateFormat==='dot'?'(%d+)%.(%d+)%.(%d+)':'(%d+)%-(%d+)%-(%d+)';
  const indices=w.dateFormat==='custom'?[w.yearIndex,w.monthIndex,w.dayIndex]:w.dateFormat==='english'?[3,2,1]:[1,2,3];
- const captures=w.dateFormat==='custom'?pCaptures(w.datePattern?.parts||[]).length:3;
  const n=Math.max(1,Math.floor(Number(w.interval)||1)),key=String(w.statePrefix||'rp_event').replace(/[^A-Za-z0-9_]/g,'_');
+ const low=Math.floor(Number(w.min)||0),high=Math.floor(Number(w.max)||100);
  const lines=['    -- RP 날짜 이벤트: 마지막 처리 날짜와 이벤트 상태는 State에 보관합니다.',
  '    local __rpText = tostring('+ (validName(w.dateSource)?w.dateSource:'input')+' or "")',
  '    state['+q(key+'_due')+'] = false',
@@ -129,7 +130,7 @@ function workflowLuaCode(w){
   if(w.eventMode==='once')lines.push('                state['+q(key+'_done')+'] = true');
  }
  if(w.action==='text')lines.push('                state['+q(w.valueKey)+'] = '+q(w.valueText));
- else if(w.action==='random')lines.push('                state['+q(w.valueKey)+'] = math.random('+Math.floor(Number(w.min)||0)+','+Math.floor(Number(w.max)||100)+')');
+ else if(w.action==='random'&&low<=high)lines.push('                state['+q(w.valueKey)+'] = math.random('+low+','+high+')');
  lines.push('            end','        end','    end','    setState(triggerId, '+q(project.stateKey)+', state)');
  return lines;
 }
