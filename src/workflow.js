@@ -31,8 +31,9 @@ function workflowFields(){
  const keys=['dateSource','sample','interval','eventMode','firstRun','reverse','action','valueKey','valueText','min','max','statePrefix','widgetHtml','widgetCss'];
  keys.forEach(k=>{const el=$('#wf-'+k);if(!el)return;el.value=w[k];el.oninput=el.onchange=()=>{w[k]=['interval','min','max'].includes(k)?Number(el.value):el.value;renderWorkflowPreview();refreshOutputs()}});
  format.onchange=()=>{w.dateFormat=format.value;renderWorkflowFields();refreshOutputs()};
+ $('#wf-action').onchange=()=>{w.action=$('#wf-action').value;$('#wf-actionText').hidden=w.action!=='text';$('#wf-actionRandom').hidden=w.action!=='random';renderWorkflowPreview();refreshOutputs()};
  $('#wf-enabled').checked=w.enabled;$('#wf-enabled').onchange=e=>{w.enabled=e.target.checked;renderWorkflowPreview();refreshOutputs()};
- $('#wf-widgetEnabled').checked=w.widgetEnabled;$('#wf-widgetEnabled').onchange=e=>{w.widgetEnabled=e.target.checked;renderWorkflowPreview();refreshOutputs()};
+ $('#wf-widgetEnabled').checked=w.widgetEnabled;$('#wf-widgetEnabled').onchange=e=>{w.widgetEnabled=e.target.checked;$('#wf-widgetSettings').hidden=!w.widgetEnabled;renderWorkflowPreview();refreshOutputs()};
  $('#wf-patternImport').replaceChildren();
  const select=$('#wf-patternImport');select.append(new Option('추출 패턴 선택',''));
  (project.patterns||[]).forEach(t=>select.append(new Option(t.title,t.id)));
@@ -103,7 +104,7 @@ function workflowLuaCode(w){
  '            local __rpElapsed = __rpPreviousDays and (__rpNow-__rpPreviousDays) or nil',
  '            local __rpDue = false',
  '            state['+q('rp_date')+'] = __rpDate'];
- if(w.eventMode==='condition'){lines.push('            __rpDue = (__rpElapsed ~= nil and __rpElapsed >= '+n+')');}
+ if(w.eventMode==='condition'){lines.push('            if __rpElapsed == nil then state['+q(key+'_last_date')+'] = __rpDate end', '            __rpDue = (__rpElapsed ~= nil and __rpElapsed >= '+n+')');}
  else {
   lines.push('            if __rpElapsed == nil then',
     '                __rpDue = '+(w.firstRun==='run'?'true':'false'),
