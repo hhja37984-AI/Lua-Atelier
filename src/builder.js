@@ -2,9 +2,9 @@ const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const uid=()=>Math.random().toString(36).slice(2,10);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const copy=x=>JSON.parse(JSON.stringify(x));
-const initial=()=>({trigger:'onInput',stateKey:'atelier_state',flow:[],functions:[],patterns:[]});
+const initial=()=>({trigger:'onInput',stateKey:'atelier_state',flow:[],functions:[],patterns:[],workflow:null});
 let project=initial(),activeFn=null;
-function toPage(page){$$('.page').forEach(x=>x.classList.toggle('active',x.id==='page-'+page));$$('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.page===page));if(page==='code')$('#codeFull').value=buildLua();if(page==='functions')renderFunctions();if(page==='patterns')renderPatternLibrary();}
+function toPage(page){$$('.page').forEach(x=>x.classList.toggle('active',x.id==='page-'+page));$$('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.page===page));if(page==='code')$('#codeFull').value=buildLua();if(page==='functions')renderFunctions();if(page==='patterns')renderPatternLibrary();if(page==='workflow')renderWorkflowFields();}
 $$('.tabs button').forEach(x=>x.onclick=()=>toPage(x.dataset.page));
 const TYPES={literal:'변수 만들기',stateRead:'State 읽기',stateSet:'State 저장',calc:'숫자 계산',clamp:'범위 제한',random:'랜덤 정수',chance:'확률 판정',weighted:'가중치 선택',date:'날짜 계산',split:'구분자로 나누기',extract:'사이 문자열 추출',slice:'위치로 추출',pattern:'패턴 추출',patternUse:'추출 패턴 복사본',map:'값 대응표',replace:'문자열 치환',if:'조건 분기',output:'텍스트 / HTML 출력',alert:'알림',removeChat:'최근 채팅 삭제',stop:'생성 중단',call:'내 함수 호출',return:'함수 반환',log:'로그'};
 const OPTS=Object.entries(TYPES).map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
