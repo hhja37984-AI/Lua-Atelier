@@ -2,6 +2,17 @@
 const FLOW_MONTHS={jan:1,january:1,feb:2,february:2,mar:3,march:3,apr:4,april:4,may:5,jun:6,june:6,jul:7,july:7,aug:8,august:8,sep:9,sept:9,september:9,oct:10,october:10,nov:11,november:11,dec:12,december:12};
 const flowDefault=()=>({enabled:false,dateSource:'input',dateFormat:'iso',datePattern:null,yearIndex:3,monthIndex:2,dayIndex:1,sample:'2026-09-19',interval:3,eventMode:'repeat',firstRun:'run',reverse:'skip',action:'random',valueKey:'weather',valueText:'맑음',min:1,max:100,statePrefix:'rp_event',widgetEnabled:false,widgetHtml:'<div class="rp-widget"><b>현재 날씨</b><p>{{weather}}</p><small>{{rp_date}}</small></div>',widgetCss:'.rp-widget { padding: 14px; border-radius: 12px; background: #f2eee8; color: #342e2a; }',widgetBindings:{weather:'weather',rp_date:'rp_date'}});
 function ensureWorkflow(){if(!project.workflow)project.workflow=flowDefault();return project.workflow}
+function attachWorkflowEvent(){
+ const w=ensureWorkflow();
+ if(!w.enabled){w.enabled=true;$('#wf-enabled').checked=true}
+ const key=String(w.statePrefix||'rp_event').replace(/[^A-Za-z0-9_]/g,'_')+'_due';
+ const known=allVars(project.flow);let name='rpEventDue',suffix=2;
+ while(known.has(name)){name='rpEventDue'+suffix;suffix++}
+ const read=make('stateRead');read.name=name;read.key=key;read.fallback='false';
+ const branch=make('if');branch.conditions=[{left:name,op:'==',right:'true'}];branch.yes=[];branch.no=[];
+ project.flow.push(read,branch);redraw();toPage('builder');
+}
+
 function parseFlowDate(text,w){
  const s=String(text||'');let year,month,day;
  if(w.dateFormat==='custom'){
@@ -33,6 +44,7 @@ function workflowFields(){
  format.onchange=()=>{w.dateFormat=format.value;renderWorkflowFields();refreshOutputs()};
  $('#wf-widgetHtml').onchange=()=>{w.widgetHtml=$('#wf-widgetHtml').value;renderWorkflowFields();refreshOutputs()};
  $('#wf-action').onchange=()=>{w.action=$('#wf-action').value;$('#wf-actionText').hidden=w.action!=='text';$('#wf-actionRandom').hidden=w.action!=='random';renderWorkflowPreview();refreshOutputs()};
+ $('#wf-addEventBranch').onclick=attachWorkflowEvent;
  $('#wf-enabled').checked=w.enabled;$('#wf-enabled').onchange=e=>{w.enabled=e.target.checked;renderWorkflowPreview();refreshOutputs()};
  $('#wf-widgetEnabled').checked=w.widgetEnabled;$('#wf-widgetEnabled').onchange=e=>{w.widgetEnabled=e.target.checked;$('#wf-widgetSettings').hidden=!w.widgetEnabled;renderWorkflowPreview();refreshOutputs()};
  $('#wf-patternImport').replaceChildren();
