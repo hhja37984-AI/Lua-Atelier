@@ -3,7 +3,7 @@
 <title>Risu Lua Atelier v0.4</title>
 <link rel="stylesheet" href="./styles/main.css"></head><body>
 <header><span class="brand">Risu Lua Atelier <span class="small">v0.4</span></span><button id="wikiBtn" type="button">Lua 위키</button><span class="grow"></span><button id="newProject">초기화</button><button id="saveProject">프로젝트 저장</button><button id="loadProject">불러오기</button><button id="downloadCode" class="primary">.lua 저장</button></header>
-<nav class="tabs"><button data-page="recipes" class="active">레시피</button><button data-page="builder">조립</button><button data-page="functions">내 함수</button><button data-page="patterns">추출 패턴</button><button data-page="code">생성 코드</button><button data-page="test">테스트</button></nav>
+<nav class="tabs"><button data-page="workflow" class="active">RP 작업 흐름</button><button data-page="recipes">레시피</button><button data-page="builder">조립</button><button data-page="functions">내 함수</button><button data-page="patterns">추출 패턴</button><button data-page="code">생성 코드</button><button data-page="test">테스트</button></nav>
   <section class="page" id="page-wiki">
     <div class="wiki-shell">
       <nav id="wikiNav" class="wiki-nav" aria-label="Lua 위키 목차"></nav>
@@ -16,7 +16,40 @@
   </section>
 
 
-<section class="page active" id="page-recipes"><div class="pickgrid" id="recipes"></div></section>
+<section class="page active" id="page-workflow">
+<div class="workflow-layout"><div class="section">
+<div class="sheet"><h3>① RP 날짜 입력</h3>
+<div class="field"><label>날짜를 읽을 위치</label><select id="wf-dateSource"><option value="input">현재 입력 / 최근 메시지</option><option value="data">편집 중인 텍스트 (edit 트리거)</option></select></div>
+<div class="field"><label>날짜 형식</label><select id="workflowDateFormat"><option value="iso">YYYY-MM-DD</option><option value="dot">YYYY.MM.DD</option><option value="english">5 May 2005</option><option value="custom">사용자 정의 추출 패턴</option></select></div>
+<div id="wf-customDate"><div class="pattern-import-bar"><select id="wf-patternImport"><option>추출 패턴 선택</option></select><button id="wf-copyPattern">패턴 복사하기</button></div><p class="hint" id="wf-patternName"></p><div id="wf-dateIndices"></div></div>
+<div class="field"><label>샘플 날짜 문장</label><textarea id="wf-sample" placeholder="예: 9 May, Imperial Era 736"></textarea></div></div>
+<div class="sheet"><h3>② RP 날짜로 무엇을 할까요?</h3>
+<label class="workflow-check"><input id="wf-enabled" type="checkbox"> 날짜 이벤트 사용</label>
+<div class="field"><label>판정 방식</label><select id="wf-eventMode"><option value="repeat">N일마다 한 번씩 실행</option><option value="once">N일 경과 시 최초 1회만</option><option value="condition">N일 경과 여부를 매번 확인</option></select></div>
+<div class="field"><label>간격 (일)</label><input id="wf-interval" type="number" min="1" step="1"></div>
+<div class="field"><label>첫 실행</label><select id="wf-firstRun"><option value="run">즉시 실행</option><option value="skip">현재 날짜부터 계산</option></select></div>
+<div class="field"><label>날짜가 과거로 돌아가면</label><select id="wf-reverse"><option value="skip">갱신하지 않기</option><option value="reset">해당 날짜부터 다시 계산</option></select></div>
+<div class="field"><label>이벤트 상태 이름</label><input id="wf-statePrefix" placeholder="rp_event"></div>
+<p class="hint">날짜 이벤트는 선택한 RisuAI 실행 시점에 확인합니다. 마지막 처리일과 중복 실행 여부는 State로 기억합니다.</p></div>
+<div class="sheet"><h3>③ 결과를 어떻게 할까요?</h3>
+<div class="field"><label>조건을 충족하면</label><select id="wf-action"><option value="random">숫자 무작위 갱신</option><option value="text">정해진 값 저장</option><option value="none">이벤트 상태만 갱신 (다른 동작에 연결)</option></select></div>
+<div class="field"><label>결과 State 변수명</label><input id="wf-valueKey" placeholder="weather"></div>
+<div id="wf-actionText" class="field"><label>저장할 값</label><input id="wf-valueText"></div>
+<div id="wf-actionRandom"><div class="field"><label>최소값</label><input id="wf-min" type="number"></div><div class="field"><label>최대값</label><input id="wf-max" type="number"></div></div>
+<p class="hint">이벤트 발생 여부는 「이벤트 상태 이름_due」로 저장되므로 기존 조립 블록에서도 조건에 사용할 수 있습니다.</p></div>
+<div class="sheet"><h3>④ 위젯 디자인 · 변수 연결</h3><label class="workflow-check"><input id="wf-widgetEnabled" type="checkbox"> 위젯 표시</label>
+<div id="wf-widgetSettings"><div class="field"><label>HTML</label><textarea id="wf-widgetHtml" rows="8" spellcheck="false"></textarea></div>
+<div class="field"><label>CSS</label><textarea id="wf-widgetCss" rows="8" spellcheck="false"></textarea></div>
+<h3>HTML의 표시 위치 → State 변수</h3><div id="wf-widgetBindings"></div>
+<p class="hint">HTML에서 {{weather}}를 사용하면 아래에서 표시할 State 변수를 연결할 수 있습니다. 일반 변수는 해당 실행에서만 유효하므로 위젯에 필요한 값은 State에 저장하세요.</p>
+</div></div>
+</div><aside class="section"><div class="sheet workflow-preview"><h3>날짜 · 이벤트 미리보기</h3><pre id="wf-previewResult" class="workflow-result"></pre>
+<h3>위젯 미리보기</h3><div class="field"><label>화면 너비</label><select id="wf-previewWidth"><option value="100%">PC</option><option value="375px">모바일 (375px)</option></select></div>
+<iframe id="wf-widgetPreview" title="HTML CSS 위젯 미리보기" sandbox="" referrerpolicy="no-referrer"></iframe>
+<p class="hint">샘플 데이터로 HTML·CSS 표시를 확인합니다. 실제 RisuAI의 렌더링과 차이가 있을 수 있습니다.</p>
+</div><div class="sheet"><h3>세부 조립</h3><p class="hint">기존 블록 및 내 함수는 「조립」「내 함수」에서 그대로 사용할 수 있습니다.</p><button id="wf-goBuilder">조립 화면 열기</button></div></aside></div>
+</section>
+<section class="page" id="page-recipes"><div class="pickgrid" id="recipes"></div></section>
 <section class="page" id="page-builder"><div class="shell"><div class="section"><div class="sheet"><h3>실행 시점</h3><div class="field"><label for="trigger">트리거</label><select id="trigger"><option value="onInput">사용자 입력 직후</option><option value="onStart">생성 시작 시</option><option value="onOutput">출력 완료 후</option><option value="editInput">입력문 가공</option><option value="editOutput">출력문 가공</option><option value="editDisplay">화면 표시문 가공</option></select></div><div class="field"><label for="stateKey">State key</label><input id="stateKey" placeholder="예: recovery_tracker" value="atelier_state"></div></div><div class="sheet"><h3>실행 흐름</h3><div id="mainFlow" class="flowlist"></div></div></div><aside class="side"><div class="sheet"><h3>사용 가능한 변수</h3><div id="variableList" class="muted">input</div></div><div class="sheet"><div style="display:flex;align-items:center;gap:7px;margin-bottom:8px"><h3 style="margin:0;flex:1">생성 코드</h3><button id="copySide">복사</button></div><div id="issues"></div><pre id="codeMini" class="code"></pre></div></aside></div></section>
 <section class="page" id="page-functions"><div class="split2"><div class="sheet"><h3>저장된 함수</h3><div id="functionList"></div><button id="newFunction">+ 함수 만들기</button></div><div class="sheet" id="functionEditor"><h3>함수를 선택하세요</h3></div></div></section>
 <section class="page" id="page-patterns"><div class="split2"><div class="sheet"><h3>저장된 패턴</h3><div id="patternLibraryList"></div><button id="newPattern">+ 패턴 만들기</button><div class="pattern-library-tools"><button data-pattern-example="date">날짜 예시</button><button data-pattern-example="location">장소 예시</button><button data-pattern-example="command">명령어 예시</button></div><div class="pattern-library-tools"><button id="exportPatterns">패턴 내보내기</button><button id="importPatterns">패턴 가져오기</button></div><input type="file" accept=".json,application/json" id="patternLibraryFile" hidden></div><div class="sheet" id="patternLibraryEditor">패턴을 선택하세요.</div></div></section>
@@ -25,6 +58,7 @@
 <input type="file" id="projectFile" accept="application/json,.json" hidden>
 <script src="./src/builder.js"></script>
 <script src="./src/pattern-library.js"></script>
+<script src="./src/workflow.js"></script>
 <script src="./src/generator.js"></script>
 <script src="./src/simulator.js"></script>
 <script src="./src/app.js"></script>
