@@ -12,6 +12,16 @@ case'split':{const s=String(a('source')??''),sep=b.separator,parts=sep?s.split(s
 case'extract':{let s=String(a('source')??''),i=b.start?s.indexOf(b.start):0;i=i<0?-1:i+b.start.length;let j=i<0?-1:(b.end?s.indexOf(b.end,i):s.length);vars[b.name]=i<0||j<0?'':s.slice(i,j);break;}
 case'slice':vars[b.name]=String(a('source')??'').slice(Number(a('start'))-1,Number(a('start'))-1+Number(a('length')));break;
 case'pattern':{logs.push('패턴 추출: Lua pattern은 실제 RisuAI에서 확인하세요.');break;}
+case'patternUse':{
+ const pattern=pCompile(b.parts);
+ const result=String(a('source')??'').match(new RegExp(pattern.js));
+ const captures=result?result.slice(1):[];
+ const names=Array.isArray(b.names)?b.names:[];
+ for(let i=0;i<captures.length;i++){const name=String(names[i]||'').trim();if(name)vars[name]=captures[i]??''}
+ for(let i=captures.length;i<names.length;i++){const name=String(names[i]||'').trim();if(name)vars[name]=''}
+ logs.push('추출 패턴: '+(result?'일치':'불일치'));
+ break;
+}
 case'map':{const map=Object.fromEntries(b.items.split('\n').map(x=>x.split('=')).filter(x=>x.length>=2).map(([k,...v])=>[k.trim(),parseScalar(v.join('=').trim(),{})]));vars[b.name]=map[String(a('source'))]??a('fallback');break;}
 case'replace':vars[b.name]=b.mode==='plain'?String(a('source')??'').split(b.find).join(b.replacement):String(a('source')??'');if(b.mode==='pattern')logs.push('Lua pattern 치환은 실제 RisuAI에서 확인하세요.');break;
 case'date':{const d=s=>{let m=String(s).match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);if(!m)return null;let dt=new Date(Date.UTC(+m[1],+m[2]-1,+m[3]));return dt.getUTCFullYear()===+m[1]&&dt.getUTCMonth()+1===+m[2]&&dt.getUTCDate()===+m[3]?dt:null};let x=d(a('a')),y=d(a('b'));vars[b.name]=b.mode==='diff'?(x&&y?Math.round((y-x)/86400000):null):b.mode==='add'?(x?(x.setUTCDate(x.getUTCDate()+Number(a('b'))),x.toISOString().slice(0,10)):null):x?(b.mode==='year'?x.getUTCFullYear():b.mode==='month'?x.getUTCMonth()+1:x.getUTCDate()):null;break;}
