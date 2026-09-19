@@ -1,0 +1,2 @@
+renderFunctions();redraw();
+
