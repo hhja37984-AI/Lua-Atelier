@@ -16,7 +16,7 @@ function parseFlowDate(text,w){
   else{year=Number(m[1]);month=Number(m[2]);day=Number(m[3])}
  }
  if(!Number.isInteger(year)||!Number.isInteger(month)||!Number.isInteger(day)||year<1||year>9999||month<1||month>12)return null;
- const date=new Date(Date.UTC(year,month-1,day));if(date.getUTCFullYear()!==year||date.getUTCMonth()+1!==month||date.getUTCDate()!==day)return null;
+ const date=new Date(0);date.setUTCFullYear(year,month-1,day);date.setUTCHours(0,0,0,0);if(date.getUTCFullYear()!==year||date.getUTCMonth()+1!==month||date.getUTCDate()!==day)return null;
  return {year,month,day,iso:[String(year).padStart(4,'0'),String(month).padStart(2,'0'),String(day).padStart(2,'0')].join('-'),days:Math.floor(date.getTime()/86400000)};
 }
 function widgetReferences(w){return [...new Set([...String(w.widgetHtml||'').matchAll(/\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}/g)].map(x=>x[1]))]}
@@ -31,6 +31,7 @@ function workflowFields(){
  const keys=['dateSource','sample','interval','eventMode','firstRun','reverse','action','valueKey','valueText','min','max','statePrefix','widgetHtml','widgetCss'];
  keys.forEach(k=>{const el=$('#wf-'+k);if(!el)return;el.value=w[k];el.oninput=el.onchange=()=>{w[k]=['interval','min','max'].includes(k)?Number(el.value):el.value;renderWorkflowPreview();refreshOutputs()}});
  format.onchange=()=>{w.dateFormat=format.value;renderWorkflowFields();refreshOutputs()};
+ $('#wf-widgetHtml').onchange=()=>{w.widgetHtml=$('#wf-widgetHtml').value;renderWorkflowFields();refreshOutputs()};
  $('#wf-action').onchange=()=>{w.action=$('#wf-action').value;$('#wf-actionText').hidden=w.action!=='text';$('#wf-actionRandom').hidden=w.action!=='random';renderWorkflowPreview();refreshOutputs()};
  $('#wf-enabled').checked=w.enabled;$('#wf-enabled').onchange=e=>{w.enabled=e.target.checked;renderWorkflowPreview();refreshOutputs()};
  $('#wf-widgetEnabled').checked=w.widgetEnabled;$('#wf-widgetEnabled').onchange=e=>{w.widgetEnabled=e.target.checked;$('#wf-widgetSettings').hidden=!w.widgetEnabled;renderWorkflowPreview();refreshOutputs()};
@@ -58,10 +59,14 @@ function workflowFields(){
 function renderWorkflowFields(){workflowFields();renderWorkflowPreview()}
 function renderWorkflowPreview(){
  const w=ensureWorkflow(),date=parseFlowDate(w.sample,w),prev=$('#wf-previewResult');
- const n=Number(w.interval)||1,example={...project.workflowSample};
- if(date){example.rp_date=date.iso;example[w.valueKey]=w.action==='text'?w.valueText:w.min;prev.textContent='날짜 인식: '+date.iso+'\n간격: '+n+'일 / '+(w.eventMode==='repeat'?'반복 이벤트':w.eventMode==='once'?'1회 이벤트':'조건만 확인')+'\n첫 실행: '+(w.firstRun==='run'?'즉시 실행':'날짜만 기록')}
+ const n=Math.max(1,Number(w.interval)||1),example={...project.workflowSample};
+ const prior=parseFlowDate($('#wf-lastDate')?.value||'',{...w,dateFormat:'iso'});
+ const elapsed=date&&prior?date.days-prior.days:null;
+ const due=date?(elapsed===null?(w.firstRun==='run'&&w.eventMode!=='condition'):elapsed<0?false:elapsed>=n):false;
+ if(date){example.rp_date=date.iso;example[w.valueKey]=w.action==='text'?w.valueText:w.min;prev.textContent='날짜 인식: '+date.iso+'\n경과일: '+(elapsed===null?'이전 기록 없음':elapsed+'일')+'\n간격: '+n+'일 / '+(w.eventMode==='repeat'?'반복 이벤트':w.eventMode==='once'?'1회 이벤트':'조건만 확인')+'\n이벤트 충족: '+(due?'예':'아니오')+'\n첫 실행: '+(w.firstRun==='run'?'즉시 실행':'날짜만 기록')}
  else prev.textContent='날짜를 인식하지 못했습니다. 날짜 형식과 샘플 입력을 확인하세요.';
  const refs=widgetReferences(w);const values={...example};
+ $('#wf-lastDate').oninput=renderWorkflowPreview;
  for(const key of refs){const stateKey=w.widgetBindings?.[key]||key;if(!Object.prototype.hasOwnProperty.call(values,stateKey))values[stateKey]='['+stateKey+']'}
  $('#wf-widgetPreview').srcdoc=widgetHtml(w,values);
  $('#wf-widgetPreview').hidden=!w.widgetEnabled;
@@ -89,6 +94,7 @@ function workflowLuaCode(w){
  const n=Math.max(1,Math.floor(Number(w.interval)||1)),key=String(w.statePrefix||'rp_event').replace(/[^A-Za-z0-9_]/g,'_');
  const lines=['    -- RP 날짜 이벤트: 마지막 처리 날짜와 이벤트 상태는 State에 보관합니다.',
  '    local __rpText = tostring('+ (validName(w.dateSource)?w.dateSource:'input')+' or "")',
+ '    state['+q(key+'_due')+'] = false',
  '    local __rpCapture = {string.match(__rpText, '+q(pattern)+')}',
  '    local __rpMonthNames = {jan=1,january=1,feb=2,february=2,mar=3,march=3,apr=4,april=4,may=5,jun=6,june=6,jul=7,july=7,aug=8,august=8,sep=9,sept=9,september=9,oct=10,october=10,nov=11,november=11,dec=12,december=12}',
  '    local __rpYear = tonumber(__rpCapture['+indices[0]+'])',
@@ -124,6 +130,6 @@ function workflowLuaCode(w){
  }
  if(w.action==='text')lines.push('                state['+q(w.valueKey)+'] = '+q(w.valueText));
  else if(w.action==='random')lines.push('                state['+q(w.valueKey)+'] = math.random('+Math.floor(Number(w.min)||0)+','+Math.floor(Number(w.max)||100)+')');
- lines.push('            end','            setState(triggerId, '+q(project.stateKey)+', state)','        end','    end');
+ lines.push('            end','        end','    end','    setState(triggerId, '+q(project.stateKey)+', state)');
  return lines;
 }
