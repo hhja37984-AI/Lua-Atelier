@@ -3,7 +3,7 @@ const PTYPES={literal:'고정 문구',space:'공백',digits:'숫자 추출',lett
 const pToken=(kind='literal')=>({kind,text:kind==='literal'?';':''});
 const pTemplate=()=>({id:uid(),title:'새 패턴',sample:'now;Arisu;14',parts:[pToken('until'),pToken(),pToken('until'),pToken(),pToken('digits')]});
 const pCaptures=parts=>(parts||[]).filter(p=>!['literal','space'].includes(p.kind));
-const pEscape=s=>String(s).replace(/([%^%$%(%)%.%[%]%*%+%-%?])/g,'%%%1');
+const pEscape=s=>Array.from(String(s),c=>'^$()%.[]*+-?'.includes(c)?'%'+c:c).join('');
 const jsEscape=s=>String(s).replace(/[.*+?^$()|[\]\\{}]/g,'\\$&');
 function pCompile(parts){
  let lua='^',js='^';
