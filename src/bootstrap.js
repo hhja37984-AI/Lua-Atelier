@@ -1,2 +1,2 @@
-renderFunctions();redraw();
+loadPatternLibrary();renderFunctions();redraw();
 
